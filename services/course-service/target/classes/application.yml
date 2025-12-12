@@ -1,0 +1,27 @@
+server:
+  port: 8082
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: course-service
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  datasource:
+    url: jdbc:postgresql://postgres:5432/soa_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+cxf:
+  path: /ws
+  servlet:
+    init:
+      service-list-path: /
+
+logging:
+  level:
+    org.apache.cxf: INFO

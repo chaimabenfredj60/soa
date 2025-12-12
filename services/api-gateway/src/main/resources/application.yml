@@ -1,0 +1,68 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: api-gateway
+  web:
+    cors:
+      allowed-origins: "*"
+      allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH
+      allowed-headers: "*"
+      allow-credentials: true
+      max-age: 3600
+  cloud:
+    gateway:
+      routes:
+        # Auth Service Route
+        - id: auth-service
+          uri: http://auth-service:8081
+          predicates:
+            - Path=/auth/**
+          filters:
+            - StripPrefix=1
+
+        # Student Service Route
+        - id: student-service
+          uri: http://student-service:3000
+          predicates:
+            - Path=/students/**
+          filters:
+            - StripPrefix=1
+
+        # Course Service Route
+        - id: course-service
+          uri: http://course-service:8082
+          predicates:
+            - Path=/courses/**
+          filters:
+            - StripPrefix=1
+
+        # Grade Service Route
+        - id: grade-service
+          uri: http://grade-service:8000
+          predicates:
+            - Path=/grades/**
+          filters:
+            - StripPrefix=1
+
+        # Billing Service Route
+        - id: billing-service
+          uri: http://billing-service:5000
+          predicates:
+            - Path=/billing/**
+          filters:
+            - StripPrefix=1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: DEBUG

@@ -1280,7 +1280,20 @@
                 }
             } catch (error) {
                 responseBox.className = 'response-box response-error';
-                responseBox.textContent = '✗ API Gateway Offline\n\nPort: 9090\nStatus: Not Available\n\nServices are accessible directly:\n- Auth: localhost:8081\n- Student: localhost:3000\n- Course: localhost:8082\n- Grade: localhost:8000\n- Billing: localhost:5000\n\nError: ' + error.message;
+                const errorMsg = error.message || 'Connection failed';
+                const isTimeout = errorMsg.includes('Timeout');
+                const isCors = errorMsg.includes('Failed to fetch');
+                
+                let details = '';
+                if (isTimeout) {
+                    details = '\nReason: No response within 3 seconds';
+                } else if (isCors) {
+                    details = '\nReason: Container may not be running or network issue';
+                } else {
+                    details = '\nReason: ' + errorMsg;
+                }
+                
+                responseBox.textContent = '✗ API Gateway Offline\n\nPort: 9090\nStatus: Not Available' + details + '\n\n📋 Direct Service Access (Fallback):\n- Auth: localhost:8081\n- Student: localhost:3000\n- Course: localhost:8082\n- Grade: localhost:8000\n- Billing: localhost:5000\n\n💡 Solutions:\n1. Start gateway: docker-compose up api-gateway\n2. Use direct service endpoints\n3. Check Docker logs: docker logs soa-api-gateway';
             }
         }
 

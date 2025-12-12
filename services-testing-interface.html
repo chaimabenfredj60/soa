@@ -498,6 +498,11 @@
                     <div class="service-name">API Gateway</div>
                     <span class="service-type type-gateway">GATEWAY</span>
                 </div>
+                <div class="service-info">
+                    <p><strong>Type:</strong> Spring Cloud Gateway</p>
+                    <p><strong>Port:</strong> 9090</p>
+                    <p><strong>Role:</strong> Routage et agrégation des services</p>
+                </div>
                 <div class="test-section">
                     <div class="test-title">Tests</div>
                     <div class="button-group">
@@ -517,6 +522,11 @@
                 <div class="service-header">
                     <div class="service-name">Auth Service</div>
                     <span class="service-type type-rest">REST</span>
+                </div>
+                <div class="service-info">
+                    <p><strong>Type:</strong> Spring Boot REST</p>
+                    <p><strong>Port:</strong> 8081</p>
+                    <p><strong>Role:</strong> Authentification et JWT</p>
                 </div>
                 <div class="test-section">
                     <div class="test-title">Tests</div>
@@ -538,6 +548,11 @@
                     <div class="service-name">Student Service</div>
                     <span class="service-type type-rest">REST</span>
                 </div>
+                <div class="service-info">
+                    <p><strong>Type:</strong> Node.js/Express</p>
+                    <p><strong>Port:</strong> 3000</p>
+                    <p><strong>Role:</strong> CRUD Étudiants</p>
+                </div>
                 <div class="test-section">
                     <div class="test-title">Tests</div>
                     <div class="button-group">
@@ -557,6 +572,11 @@
                 <div class="service-header">
                     <div class="service-name">Course Service</div>
                     <span class="service-type type-soap">SOAP</span>
+                </div>
+                <div class="service-info">
+                    <p><strong>Type:</strong> Java/JAX-WS (SOAP)</p>
+                    <p><strong>Port:</strong> 8082</p>
+                    <p><strong>Role:</strong> Gestion des cours et emplois</p>
                 </div>
                 <div class="test-section">
                     <div class="test-title">Tests</div>
@@ -578,6 +598,11 @@
                     <div class="service-name">Grade Service</div>
                     <span class="service-type type-rest">REST</span>
                 </div>
+                <div class="service-info">
+                    <p><strong>Type:</strong> Python/FastAPI</p>
+                    <p><strong>Port:</strong> 8000</p>
+                    <p><strong>Role:</strong> Gestion des notes</p>
+                </div>
                 <div class="test-section">
                     <div class="test-title">Tests</div>
                     <div class="button-group">
@@ -597,6 +622,11 @@
                 <div class="service-header">
                     <div class="service-name">Billing Service</div>
                     <span class="service-type type-soap">SOAP</span>
+                </div>
+                <div class="service-info">
+                    <p><strong>Type:</strong> .NET Core (SOAP)</p>
+                    <p><strong>Port:</strong> 5000</p>
+                    <p><strong>Role:</strong> Gestion des frais universitaires</p>
                 </div>
                 <div class="test-section">
                     <div class="test-title">Tests</div>
@@ -771,27 +801,32 @@
             responseBox.textContent = '⏳ Logging in...';
 
             try {
-                console.log('Attempting login with:', { email, password });
+                const body = JSON.stringify({ email, password });
+                const headers = { 'Content-Type': 'application/json' };
+                const options = { method: 'POST', headers, body, mode: 'cors', credentials: 'include' };
                 
-                const response = await fetch('http://localhost:8081/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ email, password }),
-                    mode: 'cors',
-                    credentials: 'include'
-                });
-
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
+                // Try gateway first (port 9090), then fallback to auth service (8081)
+                let response;
+                let endpoint = '';
+                
+                try {
+                    endpoint = 'http://localhost:9090/api/auth/login (Gateway)';
+                    response = await Promise.race([
+                        fetch('http://localhost:9090/api/auth/login', options),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+                    ]);
+                    console.log('Gateway login successful');
+                } catch (gatewayError) {
+                    console.log('Gateway unavailable, trying direct auth service:', gatewayError.message);
+                    endpoint = 'http://localhost:8081/login (Direct)';
+                    response = await fetch('http://localhost:8081/login', options);
+                }
                 
                 const data = await response.json();
-                console.log('Response data:', data);
 
                 if (response.ok) {
                     responseBox.className = 'response-success';
-                    responseBox.textContent = '✓ LOGIN SUCCESSFUL\n\nEmail: ' + data.email + '\nRole: ' + data.role + '\nToken: ' + (data.token ? data.token.substring(0, 50) + '...' : 'N/A');
+                    responseBox.textContent = '✓ LOGIN SUCCESSFUL (' + endpoint + ')\n\nEmail: ' + data.email + '\nRole: ' + data.role + '\nToken: ' + (data.token ? data.token.substring(0, 50) + '...' : 'N/A');
                     
                     // Store user data
                     currentUser = data;
@@ -811,7 +846,7 @@
             } catch (error) {
                 console.error('Login error:', error);
                 responseBox.className = 'response-error';
-                responseBox.textContent = '✗ CONNECTION ERROR\n\n' + error.message + '\n\nMake sure Auth Service is running on port 8081';
+                responseBox.textContent = '✗ CONNECTION ERROR\n\n' + error.message + '\n\nMake sure Auth Service is running on port 8081 or API Gateway on port 9090';
             }
         }
 
@@ -849,27 +884,39 @@
             responseBox.textContent = '⏳ Creating account...';
 
             try {
-                const response = await fetch('http://localhost:8081/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ 
-                        firstName, 
-                        lastName, 
-                        email, 
-                        matricule,
-                        password,
-                        role: userRole
-                    }),
-                    mode: 'cors'
+                const body = JSON.stringify({ 
+                    firstName, 
+                    lastName, 
+                    email, 
+                    matricule,
+                    password,
+                    role: userRole
                 });
+                const headers = { 'Content-Type': 'application/json' };
+                const options = { method: 'POST', headers, body, mode: 'cors' };
+                
+                // Try gateway first (port 9090), then fallback to auth service (8081)
+                let response;
+                let endpoint = '';
+                
+                try {
+                    endpoint = 'http://localhost:9090/api/auth/register (Gateway)';
+                    response = await Promise.race([
+                        fetch('http://localhost:9090/api/auth/register', options),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+                    ]);
+                    console.log('Gateway signup successful');
+                } catch (gatewayError) {
+                    console.log('Gateway unavailable, trying direct auth service:', gatewayError.message);
+                    endpoint = 'http://localhost:8081/register (Direct)';
+                    response = await fetch('http://localhost:8081/register', options);
+                }
 
                 const data = await response.json();
 
                 if (response.ok) {
                     responseBox.className = 'response-success';
-                    responseBox.textContent = formatResponse(data, false) + '\n\n[User: ' + userRole + ' created]';
+                    responseBox.textContent = formatResponse(data, false) + '\n\n[User: ' + userRole + ' created via ' + endpoint + ']';
                     
                     // Clear form
                     document.getElementById('signupFirstName').value = '';
@@ -884,7 +931,7 @@
                 }
             } catch (error) {
                 responseBox.className = 'response-error';
-                responseBox.textContent = '✗ CONNECTION ERROR\n\n' + error.message;
+                responseBox.textContent = '✗ CONNECTION ERROR\n\n' + error.message + '\n\nMake sure Auth Service is running on port 8081 or API Gateway on port 9090';
             }
         }
 

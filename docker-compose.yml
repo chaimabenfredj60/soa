@@ -1,0 +1,164 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    container_name: postgres-soa
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: soa_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - soa-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Auth Service (Spring Boot - REST)
+  auth-service:
+    container_name: auth-service
+    build:
+      context: ../services/auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - JWT_SECRET=your-very-secret-key-change-in-production-this-must-be-at-least-512-bits-or-64-bytes-long-make-it-very-long-1234567890abcdefghijklmnopqrstuvwxyz
+      - SERVER_PORT=8081
+    networks:
+      - soa-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Student Service (Node.js)
+  student-service:
+    container_name: student-service
+    build:
+      context: ../services/student-service
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - soa-network
+
+  # Course Service (Java/SOAP)
+  course-service:
+    container_name: course-service
+    build:
+      context: ../services/course-service
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/soa_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - JAVA_OPTS=-Xmx512m
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - soa-network
+
+  # Grade Service (Python/FastAPI)
+  grade-service:
+    container_name: grade-service
+    build:
+      context: ../services/grade-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+    networks:
+      - soa-network
+
+  # API Gateway (Spring Cloud Gateway)
+  # api-gateway:
+  #   container_name: api-gateway
+  #   build:
+  #     context: ../services/api-gateway
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - JAVA_OPTS=-Xmx512m
+  #   depends_on:
+  #     - auth-service
+  #     - student-service
+  #     - course-service
+  #     - grade-service
+  #   networks:
+  #     - soa-network
+
+  # API Gateway (Node.js - Simplified)
+  api-gateway:
+    container_name: api-gateway
+    build:
+      context: ../services/api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "9090:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - SERVER_PORT=8080
+    depends_on:
+      - auth-service
+      - student-service
+      - course-service
+      - grade-service
+    networks:
+      - soa-network
+
+  # Billing Service (.NET Core/WCF - SOAP)
+  billing-service:
+    container_name: billing-service
+    build:
+      context: ../services/billing-service
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+      - ASPNETCORE_ENVIRONMENT=Production
+    networks:
+      - soa-network
+    healthcheck:
+      test: ["CMD", "dotnet", "--version"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Frontend (React)
+  frontend:
+    container_name: frontend
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080
+    depends_on:
+      - api-gateway
+    networks:
+      - soa-network
+
+volumes:
+  postgres_data:
+
+networks:
+  soa-network:
+    driver: bridge

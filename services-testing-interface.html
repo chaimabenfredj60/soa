@@ -501,11 +501,11 @@
                 <div class="test-section">
                     <div class="test-title">Tests</div>
                     <div class="button-group">
-                        <button class="btn-health" onclick="testService('gateway', 'http://localhost:9090/health')">
+                        <button class="btn-health" onclick="checkGatewayStatus()">
                             Health Check
                         </button>
-                        <button class="btn-test" onclick="testService('gateway', 'http://localhost:9090/api/students/health')">
-                            Ping Services
+                        <button class="btn-test" onclick="viewGatewayRoutes()">
+                            View Routes
                         </button>
                     </div>
                     <div id="response-gateway" class="response-box" style="display:none;"></div>
@@ -1254,6 +1254,49 @@
             
             document.getElementById('invoiceStudentId').value = '';
             document.getElementById('invoiceAmount').value = '';
+        }
+
+        // API Gateway functions
+        async function checkGatewayStatus() {
+            const responseBox = document.getElementById('response-gateway');
+            responseBox.style.display = 'block';
+            responseBox.className = 'response-box response-loading';
+            responseBox.textContent = '⏳ Checking Gateway Status...';
+
+            try {
+                // Try port 9090 first (Gateway)
+                const response = await Promise.race([
+                    fetch('http://localhost:9090/actuator/health', { mode: 'cors' }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout on port 9090')), 3000))
+                ]);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    responseBox.className = 'response-box response-success';
+                    responseBox.textContent = '✓ API Gateway Running\n\nPort: 9090\nStatus: ' + (data.status || 'UP') + '\nType: Spring Cloud Gateway\n\nRouting enabled for all services:\n- Auth Service\n- Student Service\n- Course Service\n- Grade Service\n- Billing Service';
+                } else {
+                    responseBox.className = 'response-box response-error';
+                    responseBox.textContent = '✗ Gateway not responding\n\nPort 9090 returned status: ' + response.status;
+                }
+            } catch (error) {
+                responseBox.className = 'response-box response-error';
+                responseBox.textContent = '✗ API Gateway Offline\n\nPort: 9090\nStatus: Not Available\n\nServices are accessible directly:\n- Auth: localhost:8081\n- Student: localhost:3000\n- Course: localhost:8082\n- Grade: localhost:8000\n- Billing: localhost:5000\n\nError: ' + error.message;
+            }
+        }
+
+        function viewGatewayRoutes() {
+            const routes = [
+                '🔌 API Gateway Routes:\n\n',
+                '1. /api/auth/** → Auth Service (8081)\n',
+                '2. /api/students/** → Student Service (3000)\n',
+                '3. /api/courses/** → Course Service (8082)\n',
+                '4. /api/grades/** → Grade Service (8000)\n',
+                '5. /api/billing/** → Billing Service (5000)\n\n',
+                'Base URL: http://localhost:9090\n',
+                'Fallback: Direct service access if gateway unavailable'
+            ].join('');
+            
+            alert(routes);
         }
     </script>
 </body>

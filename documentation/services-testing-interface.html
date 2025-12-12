@@ -561,10 +561,10 @@
                 <div class="test-section">
                     <div class="test-title">Tests</div>
                     <div class="button-group">
-                        <button class="btn-health" onclick="testService('course', 'http://localhost:9090/api/courses/health')">
+                        <button class="btn-health" onclick="testService('course', 'http://localhost:8082/health')">
                             Health Check
                         </button>
-                        <button class="btn-test" onclick="testService('course', 'http://localhost:9090/api/courses')">
+                        <button class="btn-test" onclick="testService('course', 'http://localhost:8082/courses')">
                             Get Courses
                         </button>
                     </div>
@@ -581,10 +581,10 @@
                 <div class="test-section">
                     <div class="test-title">Tests</div>
                     <div class="button-group">
-                        <button class="btn-health" onclick="testService('grade', 'http://localhost:9090/api/grades/health')">
+                        <button class="btn-health" onclick="testService('grade', 'http://localhost:8000/health')">
                             Health Check
                         </button>
-                        <button class="btn-test" onclick="testService('grade', 'http://localhost:9090/api/grades')">
+                        <button class="btn-test" onclick="testService('grade', 'http://localhost:8000/api/grades')">
                             Get Grades
                         </button>
                     </div>
@@ -645,11 +645,11 @@
     <script>
         const services = [
             { id: 'gateway', name: 'API Gateway', url: 'http://localhost:9090/health' },
-            { id: 'auth', name: 'Auth Service', url: 'http://localhost:9090/api/auth/health' },
-            { id: 'student', name: 'Student Service', url: 'http://localhost:9090/api/students/health' },
-            { id: 'course', name: 'Course Service', url: 'http://localhost:9090/api/courses/health' },
-            { id: 'grade', name: 'Grade Service', url: 'http://localhost:9090/api/grades/health' },
-            { id: 'billing', name: 'Billing Service', url: 'http://localhost:9090/api/billing/health' }
+            { id: 'auth', name: 'Auth Service', url: 'http://localhost:8081/health' },
+            { id: 'student', name: 'Student Service', url: 'http://localhost:3000/health' },
+            { id: 'course', name: 'Course Service', url: 'http://localhost:8082/health' },
+            { id: 'grade', name: 'Grade Service', url: 'http://localhost:8000/health' },
+            { id: 'billing', name: 'Billing Service', url: 'http://localhost:5000/health' }
         ];
 
         let healthyCount = 0;
@@ -1092,7 +1092,7 @@
             responseBox.textContent = '⏳ Loading courses...';
 
             try {
-                const response = await fetch('http://localhost:9090/api/courses', {
+                const response = await fetch('http://localhost:8082/courses', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1185,7 +1185,7 @@
             responseBox.textContent = '⏳ Adding grade...';
 
             try {
-                const response = await fetch('http://localhost:9090/api/grades', {
+                const response = await fetch('http://localhost:8000/api/grades', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ student_id: parseInt(studentId), grade: parseFloat(grade), subject: subject }),
@@ -1216,7 +1216,7 @@
             responseBox.textContent = '⏳ Loading billing information...';
 
             try {
-                const response = await fetch('http://localhost:9090/api/billing/health', {
+                const response = await fetch('http://localhost:5000/health', {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' },
                     mode: 'cors'
@@ -1266,14 +1266,14 @@
             try {
                 // Try port 9090 first (Gateway)
                 const response = await Promise.race([
-                    fetch('http://localhost:9090/health', { mode: 'cors' }),
+                    fetch('http://localhost:9090/actuator/health', { mode: 'cors' }),
                     new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout on port 9090')), 3000))
                 ]);
 
                 if (response.ok) {
                     const data = await response.json();
                     responseBox.className = 'response-box response-success';
-                    responseBox.textContent = '✓ API Gateway Running\n\nPort: 9090\nStatus: ' + (data.status || 'UP') + '\nService: ' + (data.service || 'API Gateway') + '\nTimestamp: ' + (data.timestamp || 'N/A') + '\n\nRouting enabled for all services:\n- Auth Service (8081)\n- Student Service (3000)\n- Course Service (8082)\n- Grade Service (8000)\n- Billing Service (5000)';
+                    responseBox.textContent = '✓ API Gateway Running\n\nPort: 9090\nStatus: ' + (data.status || 'UP') + '\nType: Spring Cloud Gateway\n\nRouting enabled for all services:\n- Auth Service\n- Student Service\n- Course Service\n- Grade Service\n- Billing Service';
                 } else {
                     responseBox.className = 'response-box response-error';
                     responseBox.textContent = '✗ Gateway not responding\n\nPort 9090 returned status: ' + response.status;

@@ -1266,14 +1266,14 @@
             try {
                 // Try port 9090 first (Gateway)
                 const response = await Promise.race([
-                    fetch('http://localhost:9090/actuator/health', { mode: 'cors' }),
+                    fetch('http://localhost:9090/health', { mode: 'cors' }),
                     new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout on port 9090')), 3000))
                 ]);
 
                 if (response.ok) {
                     const data = await response.json();
                     responseBox.className = 'response-box response-success';
-                    responseBox.textContent = '✓ API Gateway Running\n\nPort: 9090\nStatus: ' + (data.status || 'UP') + '\nType: Spring Cloud Gateway\n\nRouting enabled for all services:\n- Auth Service\n- Student Service\n- Course Service\n- Grade Service\n- Billing Service';
+                    responseBox.textContent = '✓ API Gateway Running\n\nPort: 9090\nStatus: ' + (data.status || 'UP') + '\nService: ' + (data.service || 'API Gateway') + '\nTimestamp: ' + (data.timestamp || 'N/A') + '\n\nRouting enabled for all services:\n- Auth Service (8081)\n- Student Service (3000)\n- Course Service (8082)\n- Grade Service (8000)\n- Billing Service (5000)';
                 } else {
                     responseBox.className = 'response-box response-error';
                     responseBox.textContent = '✗ Gateway not responding\n\nPort 9090 returned status: ' + response.status;

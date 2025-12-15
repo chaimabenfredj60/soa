@@ -24,7 +24,7 @@ docker-compose up -d
 
 #### Services actifs:
 - Frontend: http://localhost:3001
-- API Gateway: http://localhost:8080
+- API Gateway: http://localhost:9090
 - Auth Service: http://localhost:8081
 - Student Service: http://localhost:3000
 - Course Service: http://localhost:8082
@@ -32,6 +32,23 @@ docker-compose up -d
 - Billing Service: http://localhost:5000
 
 
+
+## Connexion et Authentification
+
+### Utilisateurs de test
+| Email | Mot de passe | Rôle |
+|-------|---|---|
+| admin@universite.edu | password | ROLE_ADMIN |
+| student@universite.edu | password | ROLE_STUDENT |
+| prof@universite.edu | password | ROLE_PROFESSOR |
+
+### Smart Routing (Fallback Automatique)
+L'application utilise un système intelligent de routage :
+1. **Essai 1**: Essaie d'abord l'**API Gateway** (port 9090) avec timeout 5 secondes
+2. **Fallback**: Si le gateway n'est pas disponible, bascule automatiquement à l'**Auth Service direct** (port 8081)
+3. **Erreur**: Affiche l'erreur uniquement si AUCUN service n'est disponible
+
+Cette approche garantit que l'application fonctionne même si le gateway est en maintenance !
 
 ## API REST
 
@@ -132,9 +149,10 @@ docker-compose build --no-cache <service-name>
 ```
 
 ### Problèmes de connexion
-1. Vérifier que l'API Gateway est accessible: http://localhost:8080/health
-2. Vérifier les credentials (email/password)
-3. Vérifier le token JWT dans les headers
+1. Vérifier que l'API Gateway est accessible: http://localhost:9090/health
+2. Si le gateway n'est pas disponible, l'app utilisera automatiquement l'Auth Service direct (8081)
+3. Vérifier les credentials (email/password)
+4. Vérifier le token JWT dans les headers
 
 ### Base de données
 ```bash

@@ -96,10 +96,27 @@ const SignUpPage = () => {
     setError('');
 
     try {
-      // Register the user
-      const registerResponse = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/register`,
-        {
+      // Register the user - try gateway first, then fallback to direct service
+      let registerResponse;
+      
+      try {
+        // Try API Gateway first (port 9090)
+        registerResponse = await Promise.race([
+          axios.post('http://localhost:9090/api/auth/register', {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            password: formData.password,
+            matricule: formData.matricule,
+            phone: formData.phone,
+            role: 'STUDENT'
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+        ]);
+      } catch (gatewayError) {
+        // Fallback to direct Auth Service (port 8081)
+        console.log('Gateway unavailable for register, trying direct Auth Service:', gatewayError.message);
+        registerResponse = await axios.post('http://localhost:8081/register', {
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
@@ -107,21 +124,32 @@ const SignUpPage = () => {
           matricule: formData.matricule,
           phone: formData.phone,
           role: 'STUDENT'
-        }
-      );
+        });
+      }
 
       setSuccess(true);
       
       // Auto-login after signup
       setTimeout(async () => {
         try {
-          const loginResponse = await axios.post(
-            `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/login`,
-            {
+          let loginResponse;
+          
+          try {
+            // Try gateway first
+            loginResponse = await Promise.race([
+              axios.post('http://localhost:9090/api/auth/login', {
+                email: formData.email,
+                password: formData.password
+              }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+            ]);
+          } catch (gatewayError) {
+            // Fallback to direct Auth Service
+            loginResponse = await axios.post('http://localhost:8081/login', {
               email: formData.email,
               password: formData.password
-            }
-          );
+            });
+          }
 
           const { token, user } = loginResponse.data;
           

@@ -33,10 +33,22 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/login`,
-        { email, password }
-      );
+      let response;
+      let endpoint = '';
+      
+      try {
+        // Try API Gateway first (port 9090)
+        endpoint = 'Gateway';
+        response = await Promise.race([
+          axios.post('http://localhost:9090/api/auth/login', { email, password }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+        ]);
+      } catch (gatewayError) {
+        // Fallback to direct Auth Service (port 8081)
+        console.log('Gateway unavailable, trying direct Auth Service:', gatewayError.message);
+        endpoint = 'Direct';
+        response = await axios.post('http://localhost:8081/login', { email, password });
+      }
 
       const { token, user } = response.data;
       
@@ -50,7 +62,8 @@ const LoginPage = () => {
       // Redirect to dashboard
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Erreur de connexion');
+      const errorMessage = err.response?.data?.message || err.message || 'Erreur de connexion';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
